@@ -70,7 +70,7 @@ jobs:
           CUSTOM_NPK_SIGN_PRIVATE_KEY: ${{ secrets.CUSTOM_NPK_SIGN_PRIVATE_KEY }}
         run: |
           cd scripts
-          python patch_loader_full_v2.py --check-keys --version "${{ steps.resolve.outputs.version }}"
+          python patch_loader_full_v2.py "${{ steps.resolve.outputs.version }}" arm --check-keys
 
       - name: Run patcher
         env:
