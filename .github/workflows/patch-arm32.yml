@@ -86,7 +86,7 @@ jobs:
           MODE_ARM_PASSWORD: ${{ secrets.MODE_ARM_PASSWORD }}
         run: |
           cd scripts
-          ARGS="--payload self --skip-all-packages --skip-netinstall --download-threads 8"
+          ARGS="--payload self --skip-all-packages --skip-netinstall --download-threads 8 --force-kernel-version"
           if [ "${{ inputs.mode_arm }}" = "true" ]; then
             ARGS="$ARGS --mode-arm ../binaries/mode_arm.zip"
           fi
