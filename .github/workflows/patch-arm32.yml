@@ -4,11 +4,16 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: 'RouterOS version (ej: 7.24.2). Vacío = última stable'
+        description: 'RouterOS version (ej: 7.24.4). Vacío = última stable'
         required: false
         type: string
       mode_arm:
         description: 'Aplicar fixup mode_arm (necesario en 7.24.x)'
+        required: true
+        default: true
+        type: boolean
+      packages:
+        description: 'Incluir all_packages y netinstall (+20-30 min)'
         required: true
         default: true
         type: boolean
@@ -18,7 +23,7 @@ on:
         default: false
         type: boolean
       release:
-        description: 'Crear una release en GitHub con el .npk'
+        description: 'Crear una release en GitHub con los .npk'
         required: true
         default: false
         type: boolean
@@ -26,7 +31,7 @@ on:
 jobs:
   patch:
     runs-on: ubuntu-22.04
-    timeout-minutes: 120
+    timeout-minutes: 180
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -60,6 +65,21 @@ jobs:
           echo "version=$V" >> $GITHUB_OUTPUT
           echo "Version: $V"
 
+      # ------------------------------------------------------------------
+      # CACHE de descargas (opción 1)
+      # Guarda el .npk, all_packages-*.zip y netinstall-*.zip entre runs.
+      # Si el cache acierta, el script detecta los ficheros y no re-descarga.
+      # La key incluye la versión: cada versión tiene su propio cache.
+      # ------------------------------------------------------------------
+      - name: Cache downloads
+        uses: actions/cache@v4
+        with:
+          path: |
+            out-arm/routeros-${{ steps.resolve.outputs.version }}-arm.npk
+            out-arm/all_packages-arm-${{ steps.resolve.outputs.version }}.zip
+            out-arm/netinstall-${{ steps.resolve.outputs.version }}.zip
+          key: downloads-${{ steps.resolve.outputs.version }}-arm-v1
+
       - name: Preflight - check keys
         env:
           MIKRO_LICENSE_PUBLIC_KEY: ${{ secrets.MIKRO_LICENSE_PUBLIC_KEY }}
@@ -86,13 +106,23 @@ jobs:
           MODE_ARM_PASSWORD: ${{ secrets.MODE_ARM_PASSWORD }}
         run: |
           cd scripts
-          ARGS="--payload self --skip-all-packages --skip-netinstall --download-threads 8 --force-kernel-version"
+          ARGS="--payload self --download-threads 8 --force-kernel-version"
+
+          # Opción 2: paquetes (all_packages + netinstall)
+          if [ "${{ inputs.packages }}" != "true" ]; then
+            ARGS="$ARGS --skip-all-packages --skip-netinstall"
+          fi
+
+          # Fixup mode_arm (7.24.x)
           if [ "${{ inputs.mode_arm }}" = "true" ]; then
             ARGS="$ARGS --mode-arm ../binaries/mode_arm.zip"
           fi
+
+          # Solo loader
           if [ "${{ inputs.loader_only }}" = "true" ]; then
             ARGS="$ARGS --loader-only"
           fi
+
           echo "Argumentos: $ARGS"
           python patch_loader_full_v2.py \
             "${{ steps.resolve.outputs.version }}" arm \
@@ -104,8 +134,9 @@ jobs:
         run: |
           echo "=== Contenido de out-arm ==="
           ls -la out-arm/ 2>/dev/null || echo "no existe out-arm/"
-          echo "=== Subcarpetas ==="
-          find out-arm -maxdepth 2 -type f 2>/dev/null | head -20 || true
+          echo ""
+          echo "=== Tamaño total ==="
+          du -sh out-arm/ 2>/dev/null || true
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
@@ -114,9 +145,10 @@ jobs:
           name: routeros-arm32-${{ steps.resolve.outputs.version }}
           path: |
             out-arm/loader_parcheado
-            out-arm/*FINAL.npk
-            out-arm/*patched.npk
+            out-arm/*FINAL*.npk
+            out-arm/*-patched.zip
           if-no-files-found: warn
+          compression-level: 6
 
       - name: Create release
         if: ${{ inputs.release && success() }}
@@ -125,5 +157,6 @@ jobs:
           name: "RouterOS ${{ steps.resolve.outputs.version }} arm"
           tag_name: "${{ steps.resolve.outputs.version }}-arm"
           files: |
-            out-arm/*FINAL.npk
+            out-arm/*FINAL*.npk
+            out-arm/*-patched.zip
           generate_release_notes: false
