@@ -150,13 +150,24 @@ jobs:
           if-no-files-found: warn
           compression-level: 6
 
-      - name: Create release
-        if: ${{ inputs.release && success() }}
+            - name: Create release (mode_arm)
+        if: ${{ inputs.release && inputs.mode_arm && success() }}
+        uses: softprops/action-gh-release@v2
+        with:
+          name: "RouterOS ${{ steps.resolve.outputs.version }} arm (mode-arm)"
+          tag_name: "${{ steps.resolve.outputs.version }}-arm"
+          files: |
+            out-arm/*FINAL-mode-arm.npk
+            out-arm/*-patched.zip
+          generate_release_notes: false
+
+      - name: Create release (sin mode_arm)
+        if: ${{ inputs.release && !inputs.mode_arm && success() }}
         uses: softprops/action-gh-release@v2
         with:
           name: "RouterOS ${{ steps.resolve.outputs.version }} arm"
           tag_name: "${{ steps.resolve.outputs.version }}-arm"
           files: |
-            out-arm/*FINAL*.npk
+            out-arm/routeros-${{ steps.resolve.outputs.version }}-arm-FINAL.npk
             out-arm/*-patched.zip
           generate_release_notes: false
