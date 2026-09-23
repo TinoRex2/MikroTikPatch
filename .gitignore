@@ -1,0 +1,46 @@
+# Secretos — NUNCA subir
+CLAVES.txt
+*.env
+.env
+keys.txt
+*_private*
+*_secret*
+secrets/
+
+# Binarios pesados (excepto binaries/mode_arm.zip, ver excepción abajo)
+*.npk
+*.sfs
+*.iso
+*.img
+*.zip
+*.tar.gz
+mode_arm*
+
+# Salidas del script
+output-*/
+work/
+all_packages*/
+netinstall*/
+*.log
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+
+# Sistema
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Editores
+.vscode/
+.idea/
+*.swp
+
+# Excepción: mode_arm.zip SÍ va al repo (protegido con password)
+!binaries/mode_arm.zip
